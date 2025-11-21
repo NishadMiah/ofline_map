@@ -36,39 +36,87 @@ class HomeController extends GetxController {
     try {
       isLoading.value = true;
       
+      // Use FileType.any to avoid GPX filter issue on Android
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['gpx'],
+        type: FileType.any,
+        allowMultiple: false,
       );
 
       if (result != null && result.files.single.path != null) {
-        File file = File(result.files.single.path!);
-        selectedFileName.value = result.files.single.name;
+        String filePath = result.files.single.path!;
+        String fileName = result.files.single.name;
+        
+        // Check if file is GPX
+        if (!fileName.toLowerCase().endsWith('.gpx')) {
+          _showMessage(
+            'Invalid File',
+            'Please select a GPX file',
+            isError: true,
+          );
+          return;
+        }
+        
+        File file = File(filePath);
+        selectedFileName.value = fileName;
         
         await _parseGpxFile(file);
         
         if (gpxPoints.isNotEmpty) {
           _centerMapOnRoute();
           _calculateDistance();
-          Get.snackbar(
+          _showMessage(
             'Success',
             'GPX file loaded successfully!',
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-            snackPosition: SnackPosition.BOTTOM,
+            isError: false,
+          );
+        } else {
+          _showMessage(
+            'No Data',
+            'No track points found in GPX file',
+            isError: true,
           );
         }
       }
     } catch (e) {
-      Get.snackbar(
+      _showMessage(
         'Error',
-        'Failed to load GPX file: $e',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
+        'Failed to load GPX file: ${e.toString()}',
+        isError: true,
       );
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  // Show message using SnackBar (not GetX snackbar)
+  void _showMessage(String title, String message, {required bool isError}) {
+    if (Get.context != null) {
+      ScaffoldMessenger.of(Get.context!).showSnackBar(
+        SnackBar(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(message),
+            ],
+          ),
+          backgroundColor: isError ? Colors.red : Colors.green,
+          duration: Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
     }
   }
 
