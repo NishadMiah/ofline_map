@@ -1,34 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-// CHANGE THIS IMPORT to match your project
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:ofline_map/view/screens/pdf_to_text/controller/pdf_to_text_controller.dart';
-import 'package:ofline_map/view/components/custom_text/custom_text.dart';
 
-class StageDetails extends StatefulWidget {
+class StageDetails extends StatelessWidget {
   const StageDetails({super.key});
 
   @override
-  State<StageDetails> createState() => _StageDetailsState();
-}
-
-class _StageDetailsState extends State<StageDetails> {
-  // Get the controller instance
-  final controller = Get.find<PdfToTextController>();
-
-  // Get the arguments passed from the list (The Map: {stage:..., page:...})
-  final Map<String, dynamic> args = Get.arguments;
-
-  @override
-  void initState() {
-    super.initState();
-    // Trigger loading the specific page when screen opens
-    controller.loadStageDetail(args['page']);
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final controller = Get.find<PdfToTextController>();
+    final Map<String, dynamic> args = Get.arguments;
+
+    // Trigger data load
+    // Using a microtask to avoid calling setState during build if the controller updates immediately
+    Future.microtask(() => controller.loadStageDetail(args['page']));
+
+    // Custom background color based on the image (Light Blue-Grey)
+    final backgroundColor = Color(0xFFB8C9D3);
+
     return Scaffold(
-      appBar: AppBar(title: Text(args['stage'] ?? "Details")),
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        backgroundColor: backgroundColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Get.back(),
+        ),
+        centerTitle: true,
+        title: Text(
+          "Stage Details",
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 20.sp,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
       body: Obx(() {
         if (controller.isDetailLoading.value) {
           return const Center(child: CircularProgressIndicator());
@@ -37,46 +45,91 @@ class _StageDetailsState extends State<StageDetails> {
         final data = controller.selectedStageDetails;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- HEADER SECTION ---
-              CustomText(
-                text: args['route'] ?? "",
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+              // --- Header: Route Name ---
+              Text(
+                args['route'] ?? "Route Name",
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 16.h),
 
-              // --- STATS GRID ---
-              _buildStatRow("Distance", data['distance'], Icons.straighten),
-              _buildStatRow("Time", data['time'], Icons.access_time),
-              _buildStatRow("Ascent", data['ascent'], Icons.arrow_upward),
-              _buildStatRow("Descent", data['descent'], Icons.arrow_downward),
+              // --- Stats Grid ---
+              _buildStatRow("Distance", data['distance']),
+              _buildStatRow("Time", data['time']),
+              _buildStatRow("Accumulated ascent", data['ascent']),
+              _buildStatRow("Accumulated descent", data['descent']),
 
-              const Divider(height: 40),
+              SizedBox(height: 16.h),
 
-              // --- STOPS SECTION ---
-              const CustomText(
-                text: "Stops & Facilities",
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+              // --- Elevation Profile ---
+              Text(
+                "Elevation Profile:",
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 8.h),
               Container(
+                height: 200.h,
                 width: double.infinity,
-                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  data['stops'] ?? "No info",
-                  style: const TextStyle(height: 1.5, fontSize: 14),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.show_chart,
+                        size: 40.sp,
+                        color: Colors.blueAccent,
+                      ),
+                      SizedBox(height: 8.h),
+                      Text(
+                        "Elevation Chart Placeholder",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
                 ),
               ),
+
+              SizedBox(height: 16.h),
+
+              // --- Walking Surface ---
+              _buildSectionTitle("Walking Surface:"),
+              _buildBulletPoints(data['walking_surface']),
+
+              SizedBox(height: 16.h),
+
+              // --- Challenges ---
+              _buildSectionTitle("Challenges:"),
+              _buildBulletPoints(data['challenges']),
+
+              SizedBox(height: 16.h),
+
+              // --- Highlights ---
+              _buildSectionTitle("Highlights:"),
+              _buildBulletPoints(data['highlights']),
+
+              SizedBox(height: 30.h),
             ],
           ),
         );
@@ -84,22 +137,78 @@ class _StageDetailsState extends State<StageDetails> {
     );
   }
 
-  Widget _buildStatRow(String label, String? value, IconData icon) {
+  Widget _buildStatRow(String label, String? value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: EdgeInsets.only(bottom: 8.h),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, size: 20, color: Colors.blue),
-          const SizedBox(width: 10),
-          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.w600)),
-          Expanded(
-            child: Text(
-              value ?? "--",
-              style: TextStyle(color: Colors.grey.shade800),
+          Text(
+            "$label:",
+            style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+          ),
+          Text(
+            value ?? "--",
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14.sp,
+          fontWeight: FontWeight.bold,
+          color: Colors.black87,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBulletPoints(String? content) {
+    if (content == null || content == "N/A") {
+      return Text(
+        "- N/A",
+        style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+      );
+    }
+
+    // Split by newlines and create a list of widgets
+    List<String> lines = content.split('\n');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: lines.map((line) {
+        if (line.trim().isEmpty) return SizedBox.shrink();
+        return Padding(
+          padding: EdgeInsets.only(bottom: 4.h),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "- ",
+                style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+              ),
+              Expanded(
+                child: Text(
+                  line.trim().startsWith('-')
+                      ? line.trim().substring(1).trim()
+                      : line.trim(),
+                  style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 }

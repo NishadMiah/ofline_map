@@ -117,31 +117,49 @@ class PdfToTextController extends GetxController {
       return regex.firstMatch(cleanText)?.group(1)?.trim();
     }
 
+    String? extractSection(String header) {
+      // Looks for "Header:" followed by content until the next header or end
+      final RegExp regex = RegExp(
+        '$header:\\s*(.*?)(?=\\s{3,}[A-Z][a-z]+:|Elevation Profile:|\$)',
+        caseSensitive: false,
+        dotAll: true,
+      );
+      return regex.firstMatch(cleanText)?.group(1)?.trim();
+    }
+
     // 1. Extract Stats
     selectedStageDetails['distance'] = extract('Distance') ?? "N/A";
     selectedStageDetails['time'] = extract('Time') ?? "N/A";
-    selectedStageDetails['ascent'] = extract('Ascent') ?? "N/A";
-    selectedStageDetails['descent'] = extract('Descent') ?? "N/A";
+    selectedStageDetails['ascent'] =
+        extract('Accumulated ascent') ?? extract('Ascent') ?? "N/A";
+    selectedStageDetails['descent'] =
+        extract('Accumulated descent') ?? extract('Descent') ?? "N/A";
 
-    // 2. Extract Stops / Table
-    // The Syncfusion extractor often marks tables with "The following table:"
-    // We try to grab everything after "Stops along the route"
-    final RegExp stopsRegex = RegExp(
-      r"Stops along the route.*?(The following table:.*)",
-      caseSensitive: false,
-    );
-    final match = stopsRegex.firstMatch(cleanText);
-
-    if (match != null) {
-      // Clean up the table text to make it readable
-      String rawTable = match.group(1)!;
-      // Remove regex artifacts like quotes or brackets if present
-      selectedStageDetails['stops'] = rawTable
-          .replaceAll('","', ' | ')
-          .replaceAll('"', '')
-          .replaceAll('   ', '\n');
-    } else {
-      selectedStageDetails['stops'] = "No specific stops listed on this page.";
+    // 2. Extract Sections
+    // Walking Surface
+    String? walkingSurface = extractSection('Walking Surface');
+    if (walkingSurface != null) {
+      // Clean up bullet points if they are just dashes or newlines
+      walkingSurface = walkingSurface.replaceAll(RegExp(r'\s{3,}'), '\n');
     }
+    selectedStageDetails['walking_surface'] = walkingSurface ?? "N/A";
+
+    // Challenges
+    String? challenges = extractSection('Challenges');
+    if (challenges != null) {
+      challenges = challenges.replaceAll(RegExp(r'\s{3,}'), '\n');
+    }
+    selectedStageDetails['challenges'] = challenges ?? "N/A";
+
+    // Highlights
+    String? highlights = extractSection('Highlights');
+    if (highlights != null) {
+      highlights = highlights.replaceAll(RegExp(r'\s{3,}'), '\n');
+    }
+    selectedStageDetails['highlights'] = highlights ?? "N/A";
+
+    // 3. Elevation Profile (Placeholder as we can't extract image from text)
+    selectedStageDetails['elevation_profile'] =
+        "true"; // Flag to show placeholder
   }
 }
