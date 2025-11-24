@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:ofline_map/core/app_routes/app_routes.dart';
 import 'package:ofline_map/view/screens/home/controller/home_controller.dart';
 import 'package:ofline_map/utils/app_colors/app_colors.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -30,6 +31,12 @@ class HomeScreen extends StatelessWidget {
                     tooltip: 'Clear Route',
                   )
                 : SizedBox.shrink(),
+          ),
+          IconButton(
+            onPressed: () {
+              Get.toNamed(AppRoutes.pdfToText);
+            },
+            icon: Icon(Icons.telegram),
           ),
         ],
       ),
