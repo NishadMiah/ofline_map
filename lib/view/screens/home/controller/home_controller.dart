@@ -99,29 +99,45 @@ class HomeController extends GetxController {
     }
 
     // Location settings for the stream
-    final LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.bestForNavigation,
-      distanceFilter: 5, // meters
-    );
+    LocationSettings locationSettings;
+
+    if (Platform.isAndroid) {
+      locationSettings = AndroidSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 5,
+        forceLocationManager: true,
+        intervalDuration: const Duration(seconds: 2),
+      );
+    } else {
+      locationSettings = LocationSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 5,
+      );
+    }
 
     try {
-      _positionStreamSub = Geolocator.getPositionStream(locationSettings: locationSettings)
-          .listen((Position pos) {
-        final latLng = LatLng(pos.latitude, pos.longitude);
-        currentLocation.value = latLng;
+      _positionStreamSub =
+          Geolocator.getPositionStream(
+            locationSettings: locationSettings,
+          ).listen(
+            (Position pos) {
+              final latLng = LatLng(pos.latitude, pos.longitude);
+              currentLocation.value = latLng;
 
-        if (isTrackingLocation.value) {
-          currentCenter.value = latLng;
-          // Keep the same zoom but move to the new center
-          try {
-            mapController.move(latLng, currentZoom.value);
-          } catch (_) {
-            // ignore errors if controller not ready
-          }
-        }
-      }, onError: (err) {
-        _showMessage('Location Error', err.toString(), isError: true);
-      });
+              if (isTrackingLocation.value) {
+                currentCenter.value = latLng;
+                // Keep the same zoom but move to the new center
+                try {
+                  mapController.move(latLng, currentZoom.value);
+                } catch (_) {
+                  // ignore errors if controller not ready
+                }
+              }
+            },
+            onError: (err) {
+              _showMessage('Location Error', err.toString(), isError: true);
+            },
+          );
 
       isTrackingLocation.value = follow;
     } catch (e) {
@@ -145,11 +161,50 @@ class HomeController extends GetxController {
     final ok = await _ensureLocationPermission();
     if (!ok) return;
 
+    // Check if location services are enabled
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _showMessage(
+        'Location Disabled',
+        'Please enable location services.',
+        isError: true,
+      );
+      return;
+    }
+
     try {
       isLoading.value = true;
+
+      // 1. Try to get last known position first (fastest)
+      final Position? lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        final latLng = LatLng(lastKnown.latitude, lastKnown.longitude);
+        currentLocation.value = latLng;
+        currentCenter.value = latLng;
+        try {
+          mapController.move(latLng, currentZoom.value);
+        } catch (_) {}
+      }
+
+      // 2. Try to get fresh position
+      LocationSettings locationSettings;
+      if (Platform.isAndroid) {
+        locationSettings = AndroidSettings(
+          accuracy: LocationAccuracy.best,
+          forceLocationManager: true,
+          timeLimit: const Duration(seconds: 10),
+        );
+      } else {
+        locationSettings = const LocationSettings(
+          accuracy: LocationAccuracy.best,
+          timeLimit: Duration(seconds: 10),
+        );
+      }
+
       final Position pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.best),
+        locationSettings: locationSettings,
       );
+
       final latLng = LatLng(pos.latitude, pos.longitude);
       currentLocation.value = latLng;
       currentCenter.value = latLng;
@@ -157,7 +212,19 @@ class HomeController extends GetxController {
         mapController.move(latLng, currentZoom.value);
       } catch (_) {}
     } catch (e) {
-      _showMessage('Location Error', 'Could not get current location: ${e.toString()}', isError: true);
+      if (currentLocation.value != null) {
+        _showMessage(
+          'GPS Signal Weak',
+          'Using last known location. Move outdoors for better signal.',
+          isError: false,
+        );
+      } else {
+        _showMessage(
+          'Location Error',
+          'Could not get current location. Ensure you are outdoors.',
+          isError: true,
+        );
+      }
     } finally {
       isLoading.value = false;
     }
@@ -232,10 +299,7 @@ class HomeController extends GetxController {
             children: [
               Text(
                 title,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               SizedBox(height: 4),
               Text(message),
@@ -245,9 +309,7 @@ class HomeController extends GetxController {
           duration: Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
     }
