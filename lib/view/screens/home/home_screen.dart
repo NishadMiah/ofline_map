@@ -23,11 +23,11 @@ class HomeScreen extends StatelessWidget {
         elevation: 2,
         actions: [
           Obx(
-            () => controller.gpxPoints.isNotEmpty
+            () => controller.loadedRoutes.isNotEmpty
                 ? IconButton(
                     icon: Icon(Icons.delete_outline),
-                    onPressed: controller.clearRoute,
-                    tooltip: 'Clear Route',
+                    onPressed: controller.clearRoutes,
+                    tooltip: 'Clear Routes',
                   )
                 : SizedBox.shrink(),
           ),
@@ -53,52 +53,58 @@ class HomeScreen extends StatelessWidget {
               ),
 
               children: [
-                // Tile Layer - Online by default; you can replace with offline file-based tiles or MBTiles provider
+                // Tile Layer
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.example.offline_map',
-                  // For offline: use local tile provider or MBTiles plugin integration
                 ),
 
-                // GPX Route Polyline
-                if (controller.gpxPoints.isNotEmpty)
+                // GPX Route Polylines
+                if (controller.loadedRoutes.isNotEmpty)
                   PolylineLayer(
-                    polylines: [
-                      Polyline(
-                        points: controller.gpxPoints,
+                    polylines: controller.loadedRoutes.map((route) {
+                      return Polyline(
+                        points: route.points,
                         strokeWidth: 4.0,
-                        color: Colors.blue,
+                        color: route.color,
                         borderColor: Colors.white,
-                        borderStrokeWidth: 2.0,
-                      ),
-                    ],
+                        borderStrokeWidth: 1.0,
+                      );
+                    }).toList(),
                   ),
 
-                // Markers Layer (waypoints)
-                if (controller.markers.isNotEmpty)
-                  MarkerLayer(markers: controller.markers),
-
-                // Start & End Markers (use `child:`)
-                if (controller.gpxPoints.length > 1)
+                // Markers Layer (waypoints from all routes)
+                if (controller.loadedRoutes.any((r) => r.markers.isNotEmpty))
                   MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: controller.gpxPoints.first,
-                        width: 50,
-                        height: 50,
-                        child: Icon(
-                          Icons.play_circle,
-                          color: Colors.green,
-                          size: 40,
+                    markers: controller.loadedRoutes
+                        .expand((route) => route.markers)
+                        .toList(),
+                  ),
+
+                // Start & End Markers for each route
+                if (controller.loadedRoutes.isNotEmpty)
+                  MarkerLayer(
+                    markers: controller.loadedRoutes.expand((route) {
+                      if (route.points.isEmpty) return <Marker>[];
+                      return [
+                        Marker(
+                          point: route.points.first,
+                          width: 40,
+                          height: 40,
+                          child: Icon(
+                            Icons.play_circle,
+                            color: Colors.green,
+                            size: 30,
+                          ),
                         ),
-                      ),
-                      Marker(
-                        point: controller.gpxPoints.last,
-                        width: 50,
-                        height: 50,
-                        child: Icon(Icons.flag, color: Colors.red, size: 40),
-                      ),
-                    ],
+                        Marker(
+                          point: route.points.last,
+                          width: 40,
+                          height: 40,
+                          child: Icon(Icons.flag, color: Colors.red, size: 30),
+                        ),
+                      ];
+                    }).toList(),
                   ),
 
                 // Current Location Marker (if available)
@@ -155,14 +161,15 @@ class HomeScreen extends StatelessWidget {
                 : SizedBox.shrink(),
           ),
 
-          // Info Card
+          // Info Card (Scrollable list of loaded files)
           Positioned(
             top: 16.h,
             left: 16.w,
             right: 16.w,
             child: Obx(
-              () => controller.selectedFileName.isNotEmpty
+              () => controller.loadedRoutes.isNotEmpty
                   ? Container(
+                      constraints: BoxConstraints(maxHeight: 200.h),
                       padding: EdgeInsets.all(12.w),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -176,49 +183,68 @@ class HomeScreen extends StatelessWidget {
                         ],
                       ),
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Icon(
-                                Icons.route,
-                                color: Colors.blue,
-                                size: 20.sp,
+                              Text(
+                                'Loaded Routes (${controller.loadedRoutes.length})',
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                              SizedBox(width: 8.w),
-                              Expanded(
-                                child: Text(
-                                  controller.selectedFileName.value,
-                                  style: TextStyle(
-                                    fontSize: 14.sp,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                              Text(
+                                'Total: ${controller.totalAllDistance.toStringAsFixed(2)} km',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(height: 8.h),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _buildInfoItem(
-                                icon: Icons.straighten,
-                                label: 'Distance',
-                                value:
-                                    '${controller.totalDistance.value.toStringAsFixed(2)} km',
-                              ),
-                              _buildInfoItem(
-                                icon: Icons.location_on,
-                                label: 'Points',
-                                value: '${controller.gpxPoints.length}',
-                              ),
-                              _buildInfoItem(
-                                icon: Icons.flag,
-                                label: 'Markers',
-                                value: '${controller.markers.length}',
-                              ),
-                            ],
+                          Divider(),
+                          Flexible(
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: controller.loadedRoutes.length,
+                              itemBuilder: (context, index) {
+                                final route = controller.loadedRoutes[index];
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 4.h),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 12.w,
+                                        height: 12.w,
+                                        decoration: BoxDecoration(
+                                          color: route.color,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      SizedBox(width: 8.w),
+                                      Expanded(
+                                        child: Text(
+                                          route.fileName,
+                                          style: TextStyle(fontSize: 12.sp),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${route.distance.toStringAsFixed(2)} km',
+                                        style: TextStyle(
+                                          fontSize: 10.sp,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         ],
                       ),
@@ -302,10 +328,10 @@ class HomeScreen extends StatelessWidget {
             left: 16.w,
             right: 16.w + 80.w, // leave space on right for location buttons
             child: ElevatedButton.icon(
-              onPressed: controller.pickGpxFile,
+              onPressed: controller.pickGpxFiles,
               icon: Icon(Icons.file_upload, size: 24.sp),
               label: Text(
-                'Load GPX File',
+                'Load GPX Files',
                 style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
@@ -321,27 +347,6 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildInfoItem({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Column(
-      children: [
-        Icon(icon, size: 16.sp, color: Colors.grey[600]),
-        SizedBox(height: 4.h),
-        Text(
-          label,
-          style: TextStyle(fontSize: 10.sp, color: Colors.grey[600]),
-        ),
-        Text(
-          value,
-          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold),
-        ),
-      ],
     );
   }
 }

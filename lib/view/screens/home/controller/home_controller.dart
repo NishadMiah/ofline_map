@@ -9,18 +9,37 @@ import 'package:xml/xml.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 
+class GpxRoute {
+  final String id;
+  final String fileName;
+  final List<LatLng> points;
+  final List<Marker> markers;
+  final double distance;
+  final Color color;
+
+  GpxRoute({
+    required this.id,
+    required this.fileName,
+    required this.points,
+    required this.markers,
+    required this.distance,
+    required this.color,
+  });
+}
+
 class HomeController extends GetxController {
   // Map Controller
   final MapController mapController = MapController();
 
   // Observable variables
-  RxList<LatLng> gpxPoints = <LatLng>[].obs;
-  RxList<Marker> markers = <Marker>[].obs;
+  RxList<GpxRoute> loadedRoutes = <GpxRoute>[].obs;
   Rx<LatLng> currentCenter = LatLng(23.8103, 90.4125).obs; // Dhaka default
   RxDouble currentZoom = 13.0.obs;
   RxBool isLoading = false.obs;
-  RxString selectedFileName = ''.obs;
-  RxDouble totalDistance = 0.0.obs;
+
+  // Computed property for total distance across all routes
+  double get totalAllDistance =>
+      loadedRoutes.fold(0.0, (sum, route) => sum + route.distance);
 
   // Location-related
   Rxn<LatLng> currentLocation = Rxn<LatLng>(); // nullable LatLng
@@ -233,54 +252,56 @@ class HomeController extends GetxController {
   // -------------------------
   // GPX file picking and parsing
   // -------------------------
-  Future<void> pickGpxFile() async {
+  Future<void> pickGpxFiles() async {
     try {
       isLoading.value = true;
 
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.any,
-        allowMultiple: false,
+        allowMultiple: true,
       );
 
-      if (result != null && result.files.single.path != null) {
-        String filePath = result.files.single.path!;
-        String fileName = result.files.single.name;
+      if (result != null && result.files.isNotEmpty) {
+        int successCount = 0;
 
-        // Check if file is GPX
-        if (!fileName.toLowerCase().endsWith('.gpx')) {
-          _showMessage(
-            'Invalid File',
-            'Please select a GPX file',
-            isError: true,
-          );
-          return;
+        for (var fileInfo in result.files) {
+          if (fileInfo.path == null) continue;
+
+          String filePath = fileInfo.path!;
+          String fileName = fileInfo.name;
+
+          // Check if file is GPX
+          if (!fileName.toLowerCase().endsWith('.gpx')) {
+            continue; // Skip non-gpx files
+          }
+
+          File file = File(filePath);
+          try {
+            final route = await _parseGpxFile(file, fileName);
+            if (route != null) {
+              loadedRoutes.add(route);
+              successCount++;
+            }
+          } catch (e) {
+            print("Error parsing $fileName: $e");
+          }
         }
 
-        File file = File(filePath);
-        selectedFileName.value = fileName;
-
-        await _parseGpxFile(file);
-
-        if (gpxPoints.isNotEmpty) {
-          _centerMapOnRoute();
-          _calculateDistance();
+        if (successCount > 0) {
+          _centerMapOnAllRoutes();
           _showMessage(
             'Success',
-            'GPX file loaded successfully!',
+            '$successCount GPX file(s) loaded successfully!',
             isError: false,
           );
         } else {
-          _showMessage(
-            'No Data',
-            'No track points found in GPX file',
-            isError: true,
-          );
+          _showMessage('No Data', 'No valid GPX tracks found.', isError: true);
         }
       }
     } catch (e) {
       _showMessage(
         'Error',
-        'Failed to load GPX file: ${e.toString()}',
+        'Failed to load GPX files: ${e.toString()}',
         isError: true,
       );
     } finally {
@@ -315,14 +336,14 @@ class HomeController extends GetxController {
     }
   }
 
-  // Parse GPX file
-  Future<void> _parseGpxFile(File file) async {
+  // Parse GPX file and return GpxRoute
+  Future<GpxRoute?> _parseGpxFile(File file, String fileName) async {
     try {
       String xmlString = await file.readAsString();
       final document = XmlDocument.parse(xmlString);
 
-      gpxPoints.clear();
-      markers.clear();
+      List<LatLng> points = [];
+      List<Marker> markers = [];
 
       // Parse track points (trkpt)
       final trackPoints = document.findAllElements('trkpt');
@@ -331,7 +352,7 @@ class HomeController extends GetxController {
         double? lon = double.tryParse(point.getAttribute('lon') ?? '');
 
         if (lat != null && lon != null) {
-          gpxPoints.add(LatLng(lat, lon));
+          points.add(LatLng(lat, lon));
         }
       }
 
@@ -342,7 +363,7 @@ class HomeController extends GetxController {
         double? lon = double.tryParse(point.getAttribute('lon') ?? '');
 
         if (lat != null && lon != null) {
-          gpxPoints.add(LatLng(lat, lon));
+          points.add(LatLng(lat, lon));
         }
       }
 
@@ -384,26 +405,53 @@ class HomeController extends GetxController {
           );
         }
       }
+
+      if (points.isEmpty) return null;
+
+      // Calculate distance for this route
+      double dist = _calculateDistance(points);
+
+      // Assign a random color
+      final color =
+          Colors.primaries[DateTime.now().microsecondsSinceEpoch %
+              Colors.primaries.length];
+
+      return GpxRoute(
+        id: DateTime.now().toIso8601String(), // simple unique id
+        fileName: fileName,
+        points: points,
+        markers: markers,
+        distance: dist,
+        color: color,
+      );
     } catch (e) {
-      throw Exception('Error parsing GPX file: $e');
+      print('Error parsing GPX file $fileName: $e');
+      return null;
     }
   }
 
-  // Center map on the route (manual bounding-box -> centroid)
-  void _centerMapOnRoute() {
-    if (gpxPoints.isEmpty) return;
+  // Center map on all routes
+  void _centerMapOnAllRoutes() {
+    if (loadedRoutes.isEmpty) return;
 
-    double minLat = gpxPoints.first.latitude;
-    double maxLat = gpxPoints.first.latitude;
-    double minLon = gpxPoints.first.longitude;
-    double maxLon = gpxPoints.first.longitude;
+    double minLat = 90.0;
+    double maxLat = -90.0;
+    double minLon = 180.0;
+    double maxLon = -180.0;
 
-    for (var point in gpxPoints) {
-      if (point.latitude < minLat) minLat = point.latitude;
-      if (point.latitude > maxLat) maxLat = point.latitude;
-      if (point.longitude < minLon) minLon = point.longitude;
-      if (point.longitude > maxLon) maxLon = point.longitude;
+    bool hasPoints = false;
+
+    for (var route in loadedRoutes) {
+      for (var point in route.points) {
+        if (point.latitude < minLat) minLat = point.latitude;
+        if (point.latitude > maxLat) maxLat = point.latitude;
+        if (point.longitude < minLon) minLon = point.longitude;
+        if (point.longitude > maxLon) maxLon = point.longitude;
+        hasPoints = true;
+      }
     }
+
+    if (!hasPoints) return;
 
     LatLng center = LatLng((minLat + maxLat) / 2, (minLon + maxLon) / 2);
     currentCenter.value = center;
@@ -416,33 +464,22 @@ class HomeController extends GetxController {
     }
   }
 
-  // Calculate total distance
-  void _calculateDistance() {
-    if (gpxPoints.length < 2) {
-      totalDistance.value = 0.0;
-      return;
-    }
+  // Calculate distance for a list of points
+  double _calculateDistance(List<LatLng> points) {
+    if (points.length < 2) return 0.0;
 
     const Distance distance = Distance();
     double total = 0.0;
 
-    for (int i = 0; i < gpxPoints.length - 1; i++) {
-      total += distance.as(
-        LengthUnit.Kilometer,
-        gpxPoints[i],
-        gpxPoints[i + 1],
-      );
+    for (int i = 0; i < points.length - 1; i++) {
+      total += distance.as(LengthUnit.Kilometer, points[i], points[i + 1]);
     }
-
-    totalDistance.value = total;
+    return total;
   }
 
-  // Clear route
-  void clearRoute() {
-    gpxPoints.clear();
-    markers.clear();
-    selectedFileName.value = '';
-    totalDistance.value = 0.0;
+  // Clear all routes
+  void clearRoutes() {
+    loadedRoutes.clear();
     currentCenter.value = LatLng(23.8103, 90.4125);
     try {
       mapController.move(currentCenter.value, 13.0);
