@@ -37,6 +37,13 @@ class HomeScreen extends StatelessWidget {
             },
             icon: Icon(Icons.telegram),
           ),
+          IconButton(
+            onPressed: () {
+              Get.toNamed(AppRoutes.planJourney);
+            },
+            icon: Icon(Icons.map), // Journey Plan icon
+            tooltip: "Plan Journey",
+          ),
         ],
       ),
       body: Stack(
