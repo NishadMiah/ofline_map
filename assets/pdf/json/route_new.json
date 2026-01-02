@@ -1,0 +1,154 @@
+{
+    "camino_routes": [
+        {
+            "route_id": "litoral",
+            "route_name": "litoral",
+            "stages": [
+                {
+                    "stage_number": 1,
+                    "stage_name": "Se Cathedral, Porto to Vila Chã",
+                    "distance_km": 26,
+                    "distance_miles": 16,
+                    "avg_daily_distance": [
+                        {
+                            "avg_daily_distance_1": "10-16km/6.2-10mi",
+                            "minimum_km": 8,
+                            "minimum_mile": 5.0,
+                            "maximum_km": 12,
+                            "maximum_mile": 7.5,
+                            "days": 3
+                        },
+                        {
+                            "avg_daily_distance_2": "16-18km/7.5-11mi",
+                            "minimum_km": 12,
+                            "minimum_mile": 7.5,
+                            "maximum_km": 18,
+                            "maximum_mile": 11.2,
+                            "days": 4
+                        },
+                        {
+                            "avg_daily_distance_3": "18-25km/11.2-15.5mi",
+                            "minimum_km": 18,
+                            "minimum_mile": 11.2,
+                            "maximum_km": 25,
+                            "maximum_mile": 15.5,
+                            "days": 5
+                        },
+                        {
+                            "avg_daily_distance_4": "25-35km/15.5-21.7mi",
+                            "minimum_km": 25,
+                            "minimum_mile": 15.5,
+                            "maximum_km": 35,
+                            "maximum_mile": 21.7,
+                            "days": 6
+                        }
+                    ],
+                    "details": {
+                        "total_distance": "25km/15.5 mi",
+                        "total_time": "5-6hours(movingtime)",
+                        "accumulated_ascent": "202m",
+                        "accumulated_descent": "200m",
+                        "walking_surface": [
+                            "4km/2,4-boardwalk",
+                            "5,5km/3,4mi-tarroad",
+                            "6,5km/4mi-cobbled"
+                        ],
+                        "elevation_profile": "preferred value",
+                        "challenges": [
+                            "A lot of walking on cobbled stones.",
+                            "A couple of stretches near a busy road and industrial areas."
+                        ],
+                        "highlights": [
+                            "The historical center of Porto.",
+                            "Beautiful forest."
+                        ]
+                    },
+                    "facilities": [
+                        {
+                            "index": 1,
+                            "services": [
+                                "Restaurants",
+                                "shops",
+                                "cafes",
+                                "ATMs"
+                            ]
+                        },
+                        {
+                            "index": 2,
+                            "services": [
+                                "cafes",
+                                "ATMs"
+                            ]
+                        },
+                        {
+                            "index": 3,
+                            "services": [
+                                "Restaurants",
+                                "shops"
+                            ]
+                        },
+                        {
+                            "index": 4,
+                            "services": [
+                                "Restaurants",
+                                "shops",
+                                "cafes"
+                            ]
+                        },
+                        {
+                            "index": 5,
+                            "services": [
+                                "Restaurants",
+                                "shops",
+                                "cafes",
+                                "ATMs"
+                            ]
+                        },
+                        {
+                            "index": 6,
+                            "services": [
+                                "cafes",
+                                "ATMs"
+                            ]
+                        },
+                        {
+                            "index": 7,
+                            "services": [
+                                "cafes",
+                                "ATMs"
+                            ]
+                        },
+                        {
+                            "index": 8,
+                            "services": [
+                                "shops"
+                            ]
+                        }
+                    ],
+                    "accommodations": [
+                        {
+                            "name": "Casa Villar:",
+                            "price_category": "$",
+                            "contact_url": "https://www.booking.com/hotel/pt/porto-leca-studios-and-apts-apt-e.en.html?aid=1434725&no_rooms=1&group_adults=2"
+                        },
+                        {
+                            "name": "Albergue Home:",
+                            "price_category": "$",
+                            "contact_url": "https://www.booking.com/hotel/pt/porto-leca-studios-and-apts-apt-e.en.html?aid=1434725&no_rooms=1&group_adults=2"
+                        },
+                        {
+                            "name": "Luxury Hotel:",
+                            "price_category": "$$",
+                            "contact_url": "https://www.booking.com/hotel/pt/porto-leca-studios-and-apts-apt-e.en.html?aid=1434725&no_rooms=1&group_adults=2"
+                        },
+                        {
+                            "name": "Homestay:",
+                            "price_category": "$$$",
+                            "contact_phone": "+351 935 470 990"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

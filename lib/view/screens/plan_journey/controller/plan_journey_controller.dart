@@ -23,7 +23,7 @@ class PlanJourneyController extends GetxController {
     try {
       isLoading.value = true;
       final String response = await rootBundle.loadString(
-        'assets/pdf/json/routes.json',
+        'assets/pdf/json/route_new.json',
       );
       final data = json.decode(response);
       final routeModel = RouteModel.fromJson(data);
@@ -68,7 +68,7 @@ class PlanJourneyController extends GetxController {
     // If JSON only has 1, but we want to simulate UI:
     if (!names.contains("Central Route")) names.add("Central Route");
     if (!names.contains("Coastal Route")) names.add("Coastal Route");
-    if (!names.contains("Litoral Way")) names.add("Litoral Way");
+    if (!names.contains("Litoral Way")) names.add("litoral");
     if (!names.contains("Coastal+ Central Route"))
       names.add("Coastal+ Central Route");
     return names;

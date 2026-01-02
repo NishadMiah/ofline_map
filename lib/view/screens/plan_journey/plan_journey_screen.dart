@@ -42,13 +42,14 @@ class PlanJourneyScreen extends StatelessWidget {
                       value: name,
                       onChanged: (val) {
                         controller.selectedRouteName.value = val.toString();
-                        // Auto-select other options if needed for demo
+                        debugPrint("Selected Route Name: ${val.toString()}");
                         if (controller.matchingRoute != null) {
                           final r = controller.matchingRoute!;
                           if (r.filterOptions?.distanceRange != null) {
                             controller.selectedDailyDistance.value =
                                 r.filterOptions!.distanceRange!;
                           }
+
                           if (r.filterOptions?.distanceLabel != null) {
                             controller.selectedStartingPoint.value =
                                 r.filterOptions!.distanceLabel!;
@@ -168,11 +169,11 @@ class PlanJourneyScreen extends StatelessWidget {
                   if (controller.matchingRoute != null) {
                     Get.toNamed(AppRoutes.planDetails);
                   } else {
-                    Get.snackbar(
-                      "Select Route",
-                      "Please select a valid route first (e.g., Litoral+ Central Route)",
-                      backgroundColor: Colors.white,
-                    );
+                    // Get.snackbar(
+                    //   "Select Route",
+                    //   "Please select a valid route first (e.g., Litoral+ Central Route)",
+                    //   backgroundColor: Colors.white,
+                    // );
                   }
                 },
                 icon: Icon(Icons.hiking, color: Colors.black),

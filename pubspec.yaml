@@ -71,6 +71,8 @@ flutter:
   assets:
     - assets/pdf/Litoral-Way-Portuguese-Camino-walking-stages.pdf
     - assets/pdf/json/routes.json
+    - assets/pdf/json/route_new.json
+    - assets/pdf/json/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
